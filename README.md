@@ -149,6 +149,125 @@ Vous devez générer une **clé API** pour utiliser ce service.
 
 ---
 
+# 🧩 Intégration propre des informations de l’Egg dans le Frontend Pterodactyl
+
+Tout a été géré **proprement côté frontend**, à travers la mise à jour de **deux fichiers clés** permettant de **demander et exploiter les informations de l’Egg** associées à chaque serveur.
+
+---
+
+## 1. 📁 Fichier Frontend : `resources/scripts/api/server/getServer.ts`
+
+Ce fichier est responsable de l’appel API principal servant à récupérer les données d’un serveur.  
+Il a été modifié pour **enrichir la réponse avec les informations de l’Egg**.
+
+### 🎯 Objectif
+Adapter l’appel API pour inclure systématiquement les données de l’Egg et les rendre disponibles pour l’ensemble de l’application.
+
+---
+
+### 🔧 Modifications Apportées
+
+### ✅ 1. Mise à jour de la structure de données (CORRECTION 1)
+
+L’interface Server a été mise à jour pour intégrer officiellement une nouvelle propriété egg.
+
+```ts
+export interface Server {
+    // ... autres propriétés
+    egg: {
+        uuid: string;
+        name: string;
+    };
+}
+```
+
+---
+
+### ✅ 2. Transformation des données (CORRECTION 2)
+
+La fonction rawDataToServerObject a été adaptée pour extraire les données de l’Egg
+(depuis relationships) et les associer à la propriété egg.
+
+```ts
+egg: (data.relationships?.egg as any)?.attributes ?? { uuid: '', name: '' },
+```
+
+---
+
+### ✅ 3. Modification de l’appel API *(CORRECTION 3)*
+L’appel HTTP a été ajusté pour inclure le paramètre `?include=egg`,  
+forçant ainsi l’API à renvoyer les informations de l’Egg.
+
+```ts
+http.get(`/api/client/servers/${uuid}?include=egg`)
+```
+
+---
+
+## 🧠 Résultat
+
+Le système de gestion d’état de Pterodactyl reçoit et stocke désormais l’UUID et le nom de l’Egg
+pour chaque serveur.
+Ces informations sont ainsi fiablement disponibles pour tous les autres composants frontend.
+
+---
+
+## 2. 🧭 Fichier Frontend : resources/scripts/routers/ServerRouter.tsx
+
+Ce fichier gère l’affichage de la barre de navigation et du contenu des pages serveur.
+Il a été mis à jour pour exploiter les données enrichies du serveur, notamment l’UUID de l’Egg.
+
+## 🎯 Objectif
+
+Utiliser l’UUID de l’Egg (désormais toujours présent) pour afficher ou masquer dynamiquement les onglets relatifs aux gestionnaires de plugins (Minecraft / Rust).
+
+---
+
+🔧 Modifications Apportées
+### ✅ 1. Récupération de l’UUID de l’Egg
+
+Une nouvelle ligne permet d’accéder à l’UUID directement depuis le store du serveur.
+
+```tsx
+const eggUuid = ServerContext.useStoreState((state) => state.server.data?.egg?.uuid);
+```
+
+---
+
+### ✅ 2. Définition des listes d’UUIDs
+
+Deux constantes regroupent les UUIDs des Eggs Minecraft et Rust, pour simplifier les vérifications.
+
+```tsx
+const MINECRAFT_EGG_UUIDS = [ /* ...vos UUIDs Minecraft... */ ];
+```
+
+---
+
+### ✅ 3. Filtrage des liens de navigation
+
+Une condition .filter() a été ajoutée pour n’afficher les onglets Plugins MC ou Rust Plugins
+que lorsque l’Egg du serveur correspond à la bonne catégorie.
+
+```tsx
+.filter((route) => {
+    if (route.path === '/mcplugins') {
+        return MINECRAFT_EGG_UUIDS.includes(eggUuid || '');
+    }
+    return !!route.name;
+})
+```
+
+---
+
+## 🧠 Résultat
+
+L’interface utilisateur devient totalement dynamique :
+les onglets spécifiques aux plugins apparaissent uniquement lorsque c’est pertinent.
+Aucun bug d’affichage, aucune supposition — le rendu dépend directement des données réelles du serveur.
+
+---
+
 ## 💬 Support
 
 - Serveur Discord : [https://discord.gg/hNXqvgFNYD](https://discord.gg/hNXqvgFNYD)
@@ -163,3 +282,4 @@ Vous devez générer une **clé API** pour utiliser ce service.
 2. Les rétrofacturations sont strictement interdites.  
 3. L’upload du plugin sur des sites tiers est interdit.  
 4. Les mises à jour ne sont pas garanties.  
+
